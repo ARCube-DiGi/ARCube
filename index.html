@@ -363,13 +363,13 @@ h1 span { color: var(--accent); }
 <div class="arDock">
   <div class="arDockInner">
 
-    <!-- USDZをQuick Lookで開く -->
+    <!-- iPhoneはQuick Look、AndroidはScene Viewer -->
     <a
       id="arLink"
       rel="ar"
       href="Island_Green.usdz">
 
-      <!-- Quick Look認識用の画像 -->
+      <!-- iPhone Quick Look認識用の画像 -->
       <img
         alt=""
         width="1"
@@ -462,6 +462,40 @@ const ctx = canvas.getContext("2d", {
 
 const viewer = document.getElementById("viewer");
 const arLink = document.getElementById("arLink");
+const isAndroid = /Android/i.test(navigator.userAgent);
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+// AndroidのScene Viewer用URLを作る
+function androidArUrl(glbFile) {
+  const modelUrl = new URL(glbFile, document.baseURI).href;
+  const fallbackUrl = new URL(window.location.href).href;
+  const params = new URLSearchParams({
+    file: modelUrl,
+    mode: "ar_preferred",
+    resizable: "true",
+    disable_occlusion: "true",
+    link: fallbackUrl
+  });
+  return "intent://arvr.google.com/scene-viewer/1.0?" + params.toString()
+    + "#Intent;scheme=https;package=com.google.ar.core;"
+    + "action=android.intent.action.VIEW;"
+    + "S.browser_fallback_url=" + encodeURIComponent(fallbackUrl) + ";end;";
+}
+
+function updateArLink(island) {
+  if (isAndroid) {
+    arLink.removeAttribute("rel");
+    arLink.href = androidArUrl(island.glb);
+    document.getElementById("dockStatus").textContent =
+      "Androidの対応端末でAR表示できます（Chrome推奨）";
+  } else {
+    arLink.setAttribute("rel", "ar");
+    arLink.href = island.usdz;
+    document.getElementById("dockStatus").textContent = isIOS
+      ? "iPhoneのARビューアで島を配置できます"
+      : "AR表示はiPhone Safariまたは対応Android Chromeでお試しください";
+  }
+}
 
 const arColorLabel =
   document.getElementById("arColorLabel");
@@ -526,8 +560,8 @@ function changeIsland(color) {
   viewer.setAttribute("src", island.glb);
   viewer.setAttribute("ios-src", island.usdz);
 
-  // 対応する2倍サイズのUSDZを開く
-  arLink.href = island.usdz;
+  // 端末に合わせてAR起動先を切り替える
+  updateArLink(island);
 }
 
 viewer.addEventListener("load", () => {
@@ -817,6 +851,7 @@ async function startCamera() {
   }
 }
 
+updateArLink(ISLANDS[currentColor]);
 startCamera();
 
 </script>
