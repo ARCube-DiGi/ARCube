@@ -1,0 +1,824 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARCube</title>
+
+<script type="module"
+  src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js">
+</script>
+
+<style>
+:root {
+  --accent: #57e5ff;
+  --bg: #080e1c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: #f5f9ff;
+  font-family: -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", sans-serif;
+}
+
+body {
+  padding-bottom: calc(132px + env(safe-area-inset-bottom));
+}
+
+main {
+  width: min(100%, 580px);
+  margin: auto;
+  padding: 14px 14px 24px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 29px;
+  font-weight: 850;
+  letter-spacing: .06em;
+}
+
+h1 span { color: var(--accent); }
+
+.tag {
+  font-size: 10px;
+  color: var(--accent);
+  border: 1px solid #57e5ff70;
+  border-radius: 20px;
+  padding: 7px 11px;
+}
+
+.description {
+  margin: 0 0 12px;
+  color: #b4c7dd;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.panel {
+  background: #101b2e;
+  border: 1px solid #304763;
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.panelTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .04em;
+}
+
+.status {
+  font-size: 10px;
+  font-weight: 400;
+  color: #a9bfd9;
+}
+
+/* カメラ */
+
+#cameraBox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #020611;
+}
+
+#camera {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 正方形の9枠 */
+
+#gridOverlay {
+  position: absolute;
+  width: 65%;
+  aspect-ratio: 1 / 1;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 20px #57e5ff50;
+  pointer-events: none;
+}
+
+.cell {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid #57e5ffb0;
+  padding: 4px;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  text-shadow: 0 1px 5px black;
+}
+
+.cell:nth-child(5) {
+  border: 2px solid white;
+}
+
+.cameraHint {
+  position: absolute;
+  bottom: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000c;
+  border-radius: 20px;
+  padding: 6px 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.result {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 11px;
+  font-size: 12px;
+  color: #b7c9e0;
+}
+
+.result strong {
+  color: white;
+  font-size: 14px;
+}
+
+/* 3Dプレビュー */
+
+#viewer {
+  display: block;
+  width: 100%;
+  height: 185px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle, #27476a, #081122 75%);
+  --poster-color: transparent;
+}
+
+#modelNote {
+  margin-top: 8px;
+  color: #b4c8df;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* AR起動ボタン */
+
+.arDock {
+  position: fixed;
+  z-index: 100;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 14px
+    calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid #395a7b;
+  background: #07101cf5;
+  backdrop-filter: blur(16px);
+}
+
+.arDockInner {
+  width: min(100%, 552px);
+  margin: auto;
+}
+
+#arLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 70px;
+  border-radius: 17px;
+  background: linear-gradient(
+    110deg, #51e5ff, #8490ff
+  );
+  box-shadow: 0 0 26px #55cfff40;
+  color: #071122;
+  text-decoration: none;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#arLink:active {
+  filter: brightness(.9);
+}
+
+.arSymbol {
+  font-size: 31px;
+  line-height: 1;
+}
+
+.arText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arText strong {
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.arText small {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+#dockStatus {
+  margin-top: 8px;
+  color: #b7c9df;
+  text-align: center;
+  font-size: 11px;
+}
+
+#hiddenCanvas {
+  display: none;
+}
+
+@media (max-height: 750px) {
+  #viewer { height: 145px; }
+}
+</style>
+</head>
+
+<body>
+
+<main>
+
+  <header>
+    <h1>AR<span>Cube</span></h1>
+    <div class="tag">COLOR × AR</div>
+  </header>
+
+  <p class="description">
+    ルービックキューブの1面を中央の9枠に合わせてください。
+    認識した色に応じて島が変化します。
+  </p>
+
+  <section class="panel">
+
+    <div class="panelTitle">
+      <span>01 / COLOR SCAN</span>
+      <span class="status" id="cameraStatus">
+        準備中...
+      </span>
+    </div>
+
+    <div id="cameraBox">
+
+      <video
+        id="camera"
+        autoplay
+        muted
+        playsinline>
+      </video>
+
+      <div id="gridOverlay">
+        <div class="cell">1</div>
+        <div class="cell">2</div>
+        <div class="cell">3</div>
+        <div class="cell">4</div>
+        <div class="cell">5</div>
+        <div class="cell">6</div>
+        <div class="cell">7</div>
+        <div class="cell">8</div>
+        <div class="cell">9</div>
+      </div>
+
+      <div class="cameraHint">
+        キューブを中央の枠に合わせる
+      </div>
+
+    </div>
+
+    <div class="result">
+      <div>
+        認識色：
+        <strong id="detectedColor">判定待ち</strong>
+      </div>
+      <div>
+        島：
+        <strong id="islandName">緑</strong>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="panel">
+
+    <div class="panelTitle">
+      <span>02 / ISLAND PREVIEW</span>
+      <span class="status" id="modelStatus">
+        読み込み中...
+      </span>
+    </div>
+
+    <model-viewer
+      id="viewer"
+      src="Island_Green.glb"
+      ios-src="Island_Green.usdz"
+      camera-controls
+      auto-rotate
+      interaction-prompt="none"
+      shadow-intensity="0"
+      exposure="1"
+      camera-orbit="0deg 70deg auto">
+    </model-viewer>
+
+    <div id="modelNote">
+      色を認識すると島が自動で切り替わります。
+    </div>
+
+  </section>
+
+</main>
+
+<div class="arDock">
+  <div class="arDockInner">
+
+    <!-- USDZをQuick Lookで開く -->
+    <a
+      id="arLink"
+      rel="ar"
+      href="Island_Green.usdz">
+
+      <!-- Quick Look認識用の画像 -->
+      <img
+        alt=""
+        width="1"
+        height="1"
+        style="
+          position:absolute;
+          width:1px;
+          height:1px;
+          opacity:0;
+        "
+        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXcAAAAASUVORK5CYII="
+      >
+
+      <span class="arSymbol">◈</span>
+
+      <span class="arText">
+        <strong>ARを起動する ↗</strong>
+        <small id="arColorLabel">
+          緑の島を現実空間に表示
+        </small>
+      </span>
+
+    </a>
+
+    <div id="dockStatus">
+      iPhoneのARビューアで島を配置できます
+    </div>
+
+  </div>
+</div>
+
+<canvas id="hiddenCanvas"></canvas>
+
+<script>
+"use strict";
+
+// ==========================
+// 島のファイル
+// ==========================
+
+const ISLANDS = {
+  red: {
+    name: "赤",
+    glb: "Island_Red.glb",
+    usdz: "Island_Red.usdz",
+    hex: "#ff4545"
+  },
+  blue: {
+    name: "青",
+    glb: "Island_Blue.glb",
+    usdz: "Island_Blue.usdz",
+    hex: "#358aff"
+  },
+  green: {
+    name: "緑",
+    glb: "Island_Green.glb",
+    usdz: "Island_Green.usdz",
+    hex: "#38d67b"
+  },
+  yellow: {
+    name: "黄色",
+    glb: "Island_Yellow.glb",
+    usdz: "Island_Yellow.usdz",
+    hex: "#ffe24b"
+  },
+  orange: {
+    name: "オレンジ",
+    glb: "Island_Orange.glb",
+    usdz: "Island_Orange.usdz",
+    hex: "#ff9b32"
+  },
+  white: {
+    name: "白",
+    glb: "Island_White.glb",
+    usdz: "Island_White.usdz",
+    hex: "#f4f5ff"
+  }
+};
+
+// ==========================
+// 要素
+// ==========================
+
+const video = document.getElementById("camera");
+const canvas = document.getElementById("hiddenCanvas");
+
+const ctx = canvas.getContext("2d", {
+  willReadFrequently: true
+});
+
+const viewer = document.getElementById("viewer");
+const arLink = document.getElementById("arLink");
+
+const arColorLabel =
+  document.getElementById("arColorLabel");
+
+const detectedColor =
+  document.getElementById("detectedColor");
+
+const islandName =
+  document.getElementById("islandName");
+
+const cameraStatus =
+  document.getElementById("cameraStatus");
+
+const modelStatus =
+  document.getElementById("modelStatus");
+
+const modelNote =
+  document.getElementById("modelNote");
+
+const cells = Array.from(
+  document.querySelectorAll(".cell")
+);
+
+// ==========================
+// 設定
+// ==========================
+
+let currentColor = "green";
+let candidateColor = null;
+let candidateSince = 0;
+let lastSwitchTime = 0;
+
+const STABLE_TIME = 1600;
+const SWITCH_COOLDOWN = 2400;
+
+// カメラ中央の65%を色判定
+const GRID_RATIO = 0.65;
+
+// ==========================
+// 島の変更
+// ==========================
+
+function changeIsland(color) {
+  if (!ISLANDS[color]) return;
+  if (color === currentColor) return;
+
+  currentColor = color;
+  lastSwitchTime = Date.now();
+
+  const island = ISLANDS[color];
+
+  islandName.textContent = island.name;
+
+  arColorLabel.textContent =
+    island.name + "の島を現実空間に表示";
+
+  modelStatus.textContent = "読み込み中...";
+
+  modelNote.textContent =
+    island.name + "の島に切り替えています";
+
+  viewer.setAttribute("src", island.glb);
+  viewer.setAttribute("ios-src", island.usdz);
+
+  // 対応する2倍サイズのUSDZを開く
+  arLink.href = island.usdz;
+}
+
+viewer.addEventListener("load", () => {
+  modelStatus.textContent = "READY";
+
+  modelNote.textContent =
+    ISLANDS[currentColor].name + "の島を表示中";
+});
+
+viewer.addEventListener("error", () => {
+  modelStatus.textContent = "ERROR";
+
+  modelNote.textContent =
+    "GLBファイルを確認してください";
+});
+
+// ==========================
+// RGBからHSVへ
+// ==========================
+
+function rgbToHsv(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  let h = 0;
+  let s = max === 0 ? 0 : delta / max;
+  let v = max;
+
+  if (delta !== 0) {
+    if (max === r) {
+      h = ((g - b) / delta) % 6;
+    } else if (max === g) {
+      h = (b - r) / delta + 2;
+    } else {
+      h = (r - g) / delta + 4;
+    }
+
+    h *= 60;
+
+    if (h < 0) h += 360;
+  }
+
+  return { h, s, v };
+}
+
+// ==========================
+// 色の判定
+// ==========================
+
+function classifyColor(r, g, b) {
+  const { h, s, v } = rgbToHsv(r, g, b);
+
+  if (v < 0.12) return null;
+
+  if (s < 0.22 && v > 0.50) {
+    return "white";
+  }
+
+  if (s < 0.27) return null;
+
+  if (h < 12 || h >= 345) return "red";
+  if (h < 43) return "orange";
+  if (h < 73) return "yellow";
+  if (h < 175) return "green";
+  if (h < 265) return "blue";
+
+  return "blue";
+}
+
+// ==========================
+// 1マスの色を取得
+// ==========================
+
+function sampleCell(imageData, x, y, cellSize) {
+  const data = imageData.data;
+  const width = imageData.width;
+
+  const positions = [0.35, 0.5, 0.65];
+
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+
+  for (const fy of positions) {
+    for (const fx of positions) {
+
+      const px = Math.floor(
+        (x + fx) * cellSize
+      );
+
+      const py = Math.floor(
+        (y + fy) * cellSize
+      );
+
+      const index = (py * width + px) * 4;
+
+      r += data[index];
+      g += data[index + 1];
+      b += data[index + 2];
+
+      count++;
+    }
+  }
+
+  return classifyColor(
+    r / count,
+    g / count,
+    b / count
+  );
+}
+
+// ==========================
+// 9枠のスキャン
+// ==========================
+
+function scanColors() {
+  if (!video.videoWidth || !video.videoHeight) {
+    return;
+  }
+
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+
+  const visibleSize = Math.min(
+    videoWidth,
+    videoHeight
+  );
+
+  const scanSize = visibleSize * GRID_RATIO;
+
+  const sourceX =
+    (videoWidth - scanSize) / 2;
+
+  const sourceY =
+    (videoHeight - scanSize) / 2;
+
+  const size = 300;
+
+  canvas.width = size;
+  canvas.height = size;
+
+  ctx.drawImage(
+    video,
+    sourceX,
+    sourceY,
+    scanSize,
+    scanSize,
+    0,
+    0,
+    size,
+    size
+  );
+
+  const imageData = ctx.getImageData(
+    0, 0, size, size
+  );
+
+  const cellSize = size / 3;
+
+  const counts = {
+    red: 0,
+    blue: 0,
+    green: 0,
+    yellow: 0,
+    orange: 0,
+    white: 0
+  };
+
+  for (let y = 0; y < 3; y++) {
+    for (let x = 0; x < 3; x++) {
+
+      const index = y * 3 + x;
+
+      const color = sampleCell(
+        imageData,
+        x,
+        y,
+        cellSize
+      );
+
+      if (color) {
+        counts[color]++;
+
+        cells[index].style.background =
+          ISLANDS[color].hex + "70";
+
+        cells[index].textContent =
+          ISLANDS[color].name;
+      } else {
+        cells[index].style.background =
+          "#56e5ff08";
+
+        cells[index].textContent = "－";
+      }
+    }
+  }
+
+  const ranking = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1]);
+
+  const [winner, winnerCount] = ranking[0];
+  const secondCount = ranking[1][1];
+
+  if (
+    winnerCount < 4 ||
+    winnerCount <= secondCount
+  ) {
+    detectedColor.textContent = "判定中...";
+    candidateColor = null;
+    candidateSince = 0;
+    return;
+  }
+
+  detectedColor.textContent =
+    ISLANDS[winner].name +
+    " (" + winnerCount + "/9)";
+
+  detectedColor.style.color =
+    ISLANDS[winner].hex;
+
+  if (winner === currentColor) {
+    candidateColor = null;
+    candidateSince = 0;
+    return;
+  }
+
+  const now = Date.now();
+
+  if (candidateColor !== winner) {
+    candidateColor = winner;
+    candidateSince = now;
+    return;
+  }
+
+  if (
+    now - candidateSince >= STABLE_TIME &&
+    now - lastSwitchTime >= SWITCH_COOLDOWN
+  ) {
+    candidateColor = null;
+    candidateSince = 0;
+    changeIsland(winner);
+  }
+}
+
+// ==========================
+// カメラ起動
+// ==========================
+
+async function startCamera() {
+  try {
+    const stream =
+      await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: {
+            ideal: "environment"
+          },
+          width: {
+            ideal: 1280
+          },
+          height: {
+            ideal: 720
+          }
+        }
+      });
+
+    video.srcObject = stream;
+    await video.play();
+
+    cameraStatus.textContent = "CAMERA ON";
+
+    setInterval(scanColors, 350);
+
+  } catch (error) {
+    console.error(error);
+
+    cameraStatus.textContent = "CAMERA ERROR";
+
+    detectedColor.textContent =
+      "カメラを許可してください";
+  }
+}
+
+startCamera();
+
+</script>
+</body>
+</html>
